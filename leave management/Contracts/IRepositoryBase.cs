@@ -12,6 +12,9 @@ namespace leave_management.Contracts
         ICollection<T> FindAll();
         // Find specific record
         T FindById(int id);
+
+        bool isExists(int id);
+
         //Operations on varible entity of class type T
         bool Create(T entity);
         bool Update(T entity);

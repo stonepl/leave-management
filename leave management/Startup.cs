@@ -40,7 +40,7 @@ namespace leave_management
             services.AddScoped<ILeaveHistoryRepository, LeaveHistoryRepository>();
             services.AddScoped<ILeaveAllocationRepository, LeaveAllocationRepository>();
 
-            services.AddAutoMapper(typeof(Maps))
+            services.AddAutoMapper(typeof(Maps));
             
             
             services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
