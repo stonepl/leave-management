@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Authorization;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -12,6 +13,7 @@ namespace leave_management.Data
         public int Id { get; set; }
         [Required]
         public String Name { get; set; }
+        public int DefaultDays { get; set; }
         public DateTime DateCreated { get; set; }
 
     }
