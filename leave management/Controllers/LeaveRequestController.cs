@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace leave_management.Controllers
@@ -62,8 +63,91 @@ namespace leave_management.Controllers
         // GET: LeaveRequestController/Details/5
         public ActionResult Details(int id)
         {
-            return View();
+            var leaveRequest = _leaveRequestRepo.FindById(id);
+            var model = _mapper.Map<LeaveRequestVM>(leaveRequest);
+            return View(model);
         }
+
+
+        public ActionResult MyLeave()
+        {
+            var employee = _userManager.GetUserAsync(User).Result;
+            var employeeid = employee.Id;
+            var employeeAllocations = _leaveAllocRepo.GetLeaveAllocationsByEmployee(employeeid);
+            var employeeRequests = _leaveRequestRepo.GetLeaveRequestsByEmployee(employeeid);
+
+            var employeeAllocationModel = _mapper.Map<List<LeaveAllocationVM>>(employeeAllocations);
+            var employeeRequestModel = _mapper.Map<List<LeaveRequestVM>>(employeeRequests);
+
+            var model = new EmployeeeLeaveRequestViewVM
+            {
+                LeaveAllocations = employeeAllocationModel,
+                LeaveRequests = employeeRequestModel
+
+            };
+
+            return View(model);
+
+
+        }
+
+
+        public ActionResult ApproveRequest(int id)
+        {
+
+            try
+            {
+                var user = _userManager.GetUserAsync(User).Result;
+                var leaveRequest = _leaveRequestRepo.FindById(id);
+                var leaveTypeId = leaveRequest.LeaveTypeId;
+                var employeeid = leaveRequest.RequestingEmployeeId;
+                var allocation = _leaveAllocRepo.GetLeaveAllocationsByEmployeeAndType(employeeid,leaveTypeId);
+
+                int daysRequested = (int)(leaveRequest.EndDate  - leaveRequest.StartDate).TotalDays;
+                allocation.NumberOfDays -= daysRequested;
+
+                leaveRequest.Approved = true;
+                leaveRequest.ApprovedById = user.Id;
+                leaveRequest.DateActioned = DateTime.Now;
+
+                _leaveRequestRepo.Update(leaveRequest);
+                _leaveAllocRepo.Update(allocation);
+                return RedirectToAction(nameof(Index), "Home");
+               
+            }
+            catch (Exception)
+            {
+
+                return RedirectToAction(nameof(Index), "Home");
+            }
+
+
+           
+        }
+
+        public ActionResult RejectRequest(int id)
+        {
+            try
+            {
+                var user = _userManager.GetUserAsync(User).Result;
+                var leaveRequest = _leaveRequestRepo.FindById(id);
+                leaveRequest.Approved = false;
+                leaveRequest.ApprovedById = user.Id;
+                leaveRequest.DateActioned = DateTime.Now;
+
+                 _leaveRequestRepo.Update(leaveRequest);
+                return RedirectToAction(nameof(Index));
+
+            }
+            catch (Exception)
+            {
+
+                return RedirectToAction(nameof(Index));
+            }
+
+
+        }
+
 
         // GET: LeaveRequestController/Create
         public ActionResult Create()
@@ -130,7 +214,9 @@ namespace leave_management.Controllers
                     Approved = null,
                     DateRequested = DateTime.Now,
                     DateActioned = DateTime.Now,
-                    LeaveTypeId = model.LeaveTypeId
+                    LeaveTypeId = model.LeaveTypeId,
+                    RequestComments =model.RequestComments
+                    
 
                 };
 
@@ -138,11 +224,11 @@ namespace leave_management.Controllers
                 var isSuccess = _leaveRequestRepo.Create(leaveRequest);
                 if (!isSuccess)
                 {
-                    ModelState.AddModelError("", "Something went wrong");
+                    ModelState.AddModelError("", "I think something went wrong");
                     return View(model);
                 }
 
-                return RedirectToAction(nameof(Index),"Home");
+                return RedirectToAction("MyLeave");
 
             }
             catch(Exception ex)
@@ -150,6 +236,17 @@ namespace leave_management.Controllers
                 ModelState.AddModelError("", "Something went wrong");
                 return View(model);
             }
+        }
+
+        public ActionResult CancelRequest(int id)
+        {
+
+            var leaveRequest = _leaveRequestRepo.FindById(id);
+            leaveRequest.Cancelled = true;
+            _leaveRequestRepo.Update(leaveRequest);
+            return RedirectToAction("MyLeave");
+
+
         }
 
         // GET: LeaveRequestController/Edit/5
